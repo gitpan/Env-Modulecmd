@@ -1,4 +1,4 @@
-# $Id: CHANGELOG,v 4.1 2004/05/07 15:42:32 ronisaac Exp $
+# $Id: CHANGELOG,v 4.2 2004/06/09 13:30:57 ronisaac Exp $
 
 # Copyright (c) 2001-2004, Morgan Stanley Dean Witter and Co.
 # Distributed under the terms of the GNU General Public License.
@@ -24,3 +24,14 @@ CHANGELOG FOR Env::Modulecmd
   - Support for modulecmd on MS Windows
   - Better handling of perl warnings that occur inside eval'ed
     modulecmd output
+
+1.2a, 2004/05/28
+
+  - Fixed installation problem under certain shells
+  - (No functionality changes)
+
+1.2b, 2004/06/09
+
+  - Fixed the improved error handling in the test suite when modulecmd
+    isn't found
+  - (No functionality changes)

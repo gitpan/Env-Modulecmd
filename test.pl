@@ -1,4 +1,4 @@
-# $Id: test.pl,v 3.1 2003/08/14 14:08:18 ronisaac Exp $
+# $Id: test.pl,v 4.1 2004/06/09 13:32:26 ronisaac Exp $
 
 # Copyright (c) 2001-2003, Morgan Stanley Dean Witter and Co.
 # Distributed under the terms of the GNU General Public License.
@@ -17,7 +17,7 @@ BEGIN {
 
 eval { Env::Modulecmd::use ('.'); };
 
-if ($@ =~ / -> open3: exec of .* failed/) {
+if ($@ =~ /open3: exec of .* failed/) {
   die <<MSG;
 
   ***** ERROR *****
