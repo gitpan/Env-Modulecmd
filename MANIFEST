@@ -1,0 +1,7 @@
+LICENSE
+MANIFEST
+Makefile.PL
+Modulecmd.pm
+README
+test.pl
+testmod
