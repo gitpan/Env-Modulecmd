@@ -1,6 +1,6 @@
-# $Id: README,v 1.1 2001/06/04 19:01:51 ronisaac Exp $
+# $Id: README,v 3.1 2003/08/14 14:08:34 ronisaac Exp $
 
-# Copyright (c) 2001, Morgan Stanley Dean Witter and Co.
+# Copyright (c) 2001-2003, Morgan Stanley Dean Witter and Co.
 # Distributed under the terms of the GNU General Public License.
 # Please see the copyright notice at the end of this file for more information.
 
@@ -63,6 +63,38 @@ README FOR Env::Modulecmd
     make test
     make install
 
+* DEFAULT PATHS
+
+  There are two environment variables that are critical to the operation
+  of both Env::Modulecmd and modulecmd itself:
+
+    PERL_MODULECMD
+      The full path to modulecmd. If present, Env::Modulecmd will always
+      use its value to invoke modulecmd. Otherwise, it will attempt to
+      invoke "modulecmd", relying on it being in the PATH.
+
+    MODULEPATH
+      A colon-separated list of directories where modulecmd itself
+      should look for modulefiles. Env::Modulecmd doesn't use this value
+      directly, but modulecmd will not work if it's not set properly, so
+      Env::Modulecmd can set it for you as a convenience.
+
+  At build time, you can specify default values for these two variables,
+  to be used in the event they're missing from the environment when
+  Env::Modulecmd is invoked. If you're building with perl5.005 or later,
+  give one or both of them as arguments to "make":
+
+    make DEFAULT_PERL_MODULECMD=/path/to/modulecmd DEFAULT_MODULEPATH=/a:/b:/c
+
+  If you're using perl5.004 or earlier, you'll need to edit Modulecmd.pm
+  by hand before installing. The two values go in the obvious spots near
+  the top of the file.
+
+  Note that these default values will work with any version of perl at
+  runtime; however, the facility used to replace the tokens in
+  Modulecmd.pm with the values supplied to "make" at build time requires
+  perl5.005 or better.
+
 * DOCUMENTATION
 
   See the pod documentation in Modulecmd.pm.
@@ -70,7 +102,7 @@ README FOR Env::Modulecmd
 * COPYRIGHT AND LICENSE
 
   Written by Ron Isaacson <ron.isaacson@morganstanley.com>
-  Copyright (c) 2001, Morgan Stanley Dean Witter and Co.
+  Copyright (c) 2001-2003, Morgan Stanley Dean Witter and Co.
 
   This program is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by

@@ -1,6 +1,6 @@
-# $Id: Makefile.PL,v 1.3 2001/07/10 19:58:34 ronisaac Exp $
+# $Id: Makefile.PL,v 3.1 2003/08/14 14:08:03 ronisaac Exp $
 
-# Copyright (c) 2001, Morgan Stanley Dean Witter and Co.
+# Copyright (c) 2001-2003, Morgan Stanley Dean Witter and Co.
 # Distributed under the terms of the GNU General Public License.
 # Please see the copyright notice in Modulecmd.pm for more information.
 
@@ -13,5 +13,6 @@ WriteMakefile
    ($] >= 5.005 ?
     (ABSTRACT_FROM => 'Modulecmd.pm',
      AUTHOR        => 'Ron Isaacson <ron.isaacson@morganstanley.com>',
+     PM_FILTER     => '$(PERL) -pe \\\'s[\\@\\@(.*)\\@\\@][\$$ENV{\$$1}]g\\\''
     ) : ()),
   );
