@@ -1,6 +1,6 @@
-# $Id: Makefile.PL,v 4.1 2004/05/28 19:39:25 ronisaac Exp $
+# $Id: Makefile.PL,v 5.1 2014/08/18 16:56:08 ronisaac Exp $
 
-# Copyright (c) 2001-2003, Morgan Stanley Dean Witter and Co.
+# Copyright (c) 2001-2014, Morgan Stanley.
 # Distributed under the terms of the GNU General Public License.
 # Please see the copyright notice in Modulecmd.pm for more information.
 

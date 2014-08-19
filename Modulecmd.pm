@@ -1,6 +1,6 @@
-# $Id: Modulecmd.pm,v 4.1 2004/05/07 15:42:15 ronisaac Exp $
+# $Id: Modulecmd.pm,v 5.3 2014/08/18 16:56:11 ronisaac Exp $
 
-# Copyright (c) 2001-2004, Morgan Stanley Dean Witter and Co.
+# Copyright (c) 2001-2014, Morgan Stanley.
 # Distributed under the terms of the GNU General Public License.
 # Please see the copyright notice at the end of this file for more information.
 
@@ -19,13 +19,12 @@ BEGIN {
 }
 
 use strict;
-use Carp;
 use vars qw($VERSION $AUTOLOAD);
 
-use IPC::Open3;
-use IO::Handle;
+use Carp;
+use IO::File;
 
-$VERSION = 1.2;
+$VERSION = 1.3;
 
 my $modulecmd = $ENV{'PERL_MODULECMD'} || 'modulecmd';
 
@@ -76,43 +75,53 @@ sub _indent {
 sub _modulecmd {
   my ($fun, $module) = @_;
 
-  # here's where the actual work gets done. first we build a command
-  # string and send it to open3 for execution. we're not sending any
-  # input, but we want to catch both its standard output and standard
-  # error, so a simple piped open won't work.
+  # here's where the actual work gets done. we call modulecmd and
+  # capture its standard output and standard error. we used to use
+  # IPC::Open3, but switched to temp files to resolve a potential hang
+  # on MS Windows 7 and up.
 
   my @cmd = ($modulecmd, "perl", $fun, $module);
-  my $cmd = join (" ", @cmd);
 
-  my $pid = 0;
-  my $out = '';
-  my $err = '';
+  # 1. save stdout and stderr and redirect them to (unlinked) temp
+  #    files
 
-  {
-    # need to turn off all warnings here, or else we get a double
-    # error from open3 if the exec fails
+  my $SAVE_OUT = IO::File->new (">&" . STDOUT->fileno);
+  my $SAVE_ERR = IO::File->new (">&" . STDERR->fileno);
 
-    local $^W = 0;
+  my $OUT = IO::File->new_tmpfile;
+  my $ERR = IO::File->new_tmpfile;
 
-    my $IN  = IO::Handle->new;
-    my $OUT = IO::Handle->new;
-    my $ERR = IO::Handle->new;
+  STDOUT->fdopen ($OUT, "w");
+  STDERR->fdopen ($ERR, "w");
 
-    $pid = open3 ($IN, $OUT, $ERR, @cmd);
+  STDOUT->autoflush (1);
+  STDERR->autoflush (1);
 
-    # slurp all output
+  # 2. call modulecmd
 
-    undef local $/;
+  my $retcode = system (@cmd);
+  my $syserr  = $!;
 
-    $out = <$OUT>;
-    $err = <$ERR>;
-  }
+  # 3. read the output from the temp files and restore stdout and
+  #    stderr
 
-  waitpid ($pid, 0);
-  my $retcode = $? >> 8;
+  STDOUT->fdopen ($SAVE_OUT, "w");
+  STDERR->fdopen ($SAVE_ERR, "w");
 
-  # if the process sent anything to standard error, or if it exited
-  # with a non-zero return code, it may have "failed"
+  $OUT->seek (0, 0);
+  $ERR->seek (0, 0);
+
+  my $out;
+  my $err;
+  my $buf;
+
+  $out .= $buf while read $OUT, $buf, 1024;
+  $err .= $buf while read $ERR, $buf, 1024;
+
+  undef $OUT;
+  undef $ERR;
+
+  # ok, how did we do?
 
   if ($err || $retcode) {
     my $croak = 0;
@@ -134,41 +143,31 @@ sub _modulecmd {
     $croak = 1
       if $error_from_modulecmd;
 
-    # now check for an exec failure. open3 obviously doesn't attempt
-    # to exec modulecmd until after it forks; if the exec fails, it
-    # croaks from the child process. we could check the STDERR output
-    # for "open3: exec of ... failed", except that on win32, the exec
-    # NEVER fails. (this is because exec's on win32 are done via
-    # system(), which uses cmd.exe, and the running cmd.exe always
-    # succeeds, leaving the child process to print an error message,
-    # with no indication whether the error came from cmd.exe or from
-    # modulecmd itself.)
+    # now check for failure from the system() call. start by checking
+    # for a non-zero return code, which works on some versions of
+    # MS Windows and most other systems.
     #
-    # a non-zero return code is the best way to detect an exec
-    # failure, and modulecmd itself will hardly ever exit with a
-    # non-zero return code. however, there are two cases where it
-    # will: (a) invalid syntax, like "modulecmd no-such-shell list";
-    # and (b) "modulecmd perl load /no/such/directory". in these
-    # cases, we attempt to determine, using the pattern above, whether
-    # this is an error message from modulecmd. if not, we assume it's
-    # a message about a failure to exec modulecmd in the first place.
+    # on MS Windows, shell commands are always wrapped with cmd.exe,
+    # and some versions of cmd.exe will always exit with a zero return
+    # code. Windows 7 seems to pass through the return code of the
+    # last command, but Windows XP and earlier can be problematic.
+    #
+    # modulecmd itself will hardly ever exit with a non-zero return
+    # code. however, there are two cases where it will: (a) invalid
+    # syntax, like "modulecmd no-such-shell list"; and (b) "modulecmd
+    # perl load /no/such/directory". in these cases, we hopefully
+    # already determined (using the pattern above) that this is an
+    # error message from modulecmd. if not, we assume it's a message
+    # about a failure to call modulecmd in the first place.
 
     if ($retcode) {
       $croak = 1;
 
       unless ($error_from_modulecmd) {
-
-        # if we're on win32, we'll actually get a semi-useful error
-        # message from cmd.exe, such as "The system cannot find the
-        # path specified." on unix, it's just "open3: exec of ...
-        # failed at Modulecmd.pm line 123"; there's no detailed
-        # reason, and the line number in Modulecmd.pm doesn't help
-        # anybody. so if the error output begins with "open3:", we
-        # assume that it's useless and build our own message.
-
-        croak "Unable to execute '$cmd'" .
-          ($err =~ /^open3:/ ? "\n" : ":\n" . _indent ($err)) .
-          "Error loading module $module";
+        croak
+          ("Unable to execute '@cmd':\n" .
+           _indent ($err || $syserr) .
+           "Error loading module $module");
       }
     }
 
@@ -177,12 +176,12 @@ sub _modulecmd {
 
     if ($croak) {
       croak
-        ("Errors from '$cmd':\n" .
+        ("Errors from '@cmd':\n" .
          _indent ($err) .
          "Error loading module $module");
     } else {
       carp
-        ("Messages from '$cmd':\n" .
+        ("Messages from '@cmd':\n" .
          _indent ($err) .
          "Possible error loading module $module")
           if $^W;
@@ -201,7 +200,7 @@ sub _modulecmd {
     eval $out;
 
     croak
-      ("'$cmd' generated output:\n" .
+      ("'@cmd' generated output:\n" .
        _indent ($out) .
        "Error evaluating:\n" .
        _indent ($@) .
@@ -221,27 +220,27 @@ Env::Modulecmd - Interface to modulecmd from Perl
 =head1 SYNOPSIS
 
   # import bootstraps, executed at compile-time
-
+  
     # explicit operations
-
+    
     use Env::Modulecmd { load => 'foo/1.0',
                          unload => ['bar/1.0', 'baz/1.0'],
                        };
-
+    
     # implied loading
-
+    
     use Env::Modulecmd qw(quux/1.0 quuux/1.0);
-
+    
     # hybrid
-
+    
     use Env::Modulecmd ('bazola/1.0', 'ztesch/1.0',
                         { load => 'oogle/1.0',
                           unload => [qw(foogle/1.0 boogle/1.0)],
                         }
                        );
-
+    
   # implicit functions, executed at run-time
-
+  
     Env::Modulecmd::load (qw(fred/1.0 jim/1.0 sheila/barney/1.0));
     Env::Modulecmd::unload ('corge/grault/1.0', 'flarp/1.0');
     Env::Modulecmd::pippo ('pluto/paperino/1.0');
@@ -341,7 +340,7 @@ Ron Isaacson <F<Ron.Isaacson@morganstanley.com>>
 
 =head1 COPYRIGHT
 
-Copyright (c) 2001-2004, Morgan Stanley Dean Witter and Co.
+Copyright (c) 2001-2014, Morgan Stanley.
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by

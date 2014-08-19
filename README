@@ -1,6 +1,6 @@
-# $Id: README,v 3.1 2003/08/14 14:08:34 ronisaac Exp $
+# $Id: README,v 5.1 2014/08/18 16:56:15 ronisaac Exp $
 
-# Copyright (c) 2001-2003, Morgan Stanley Dean Witter and Co.
+# Copyright (c) 2001-2014, Morgan Stanley.
 # Distributed under the terms of the GNU General Public License.
 # Please see the copyright notice at the end of this file for more information.
 
@@ -102,7 +102,7 @@ README FOR Env::Modulecmd
 * COPYRIGHT AND LICENSE
 
   Written by Ron Isaacson <ron.isaacson@morganstanley.com>
-  Copyright (c) 2001-2003, Morgan Stanley Dean Witter and Co.
+  Copyright (c) 2001-2014, Morgan Stanley.
 
   This program is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
